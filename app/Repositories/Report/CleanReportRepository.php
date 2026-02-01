@@ -65,38 +65,52 @@ class CleanReportRepository implements CleanReportRepositoryInterface
         return;
     }
 
-    private function greenline_clean_report($retailerReportSubmission, $retailer_id)
+    private function cleanGreenlineReport($retailerReportSubmission, int $retailerId)
     {
-        $retailer = $this->getRetailerEntries($relation = 'greenlineReports', $retailer_id, $retailerReportSubmission);
+        $retailer = $this->getRetailerEntries(
+            relation: 'greenlineReports',
+            retailerId: $retailerId,
+            submission: $retailerReportSubmission
+        );
 
-        $data = [];
-        foreach ($retailer->greenlineReports as $greenlineReport) {
-            $cleanSheet = new CleanSheet();
-            $lpVariable = $this->checkFeeForGreenline($greenlineReport, $retailerReportSubmission);
+        $cleanRecords = [];
+
+        foreach ($retailer->greenlineReports as $report) {
+            $lpVariable = $this->checkFeeForGreenline($report, $retailerReportSubmission);
 
             if ($lpVariable) {
-                $data[] = $this->CheckMasterCatalogForGreenline($retailer, $retailerReportSubmission, $cleanSheet, $lpVariable, $greenlineReport);
-            } else {
-                $cleanSheet->sku = $greenlineReport->sku;
-                $cleanSheet->product_name = $greenlineReport->name;
-                $cleanSheet->category = $greenlineReport->compliance_category;
-                $cleanSheet->brand = $greenlineReport->brand;
-                $cleanSheet->barcode = $greenlineReport->barcode;
-                $cleanSheet->sold = $greenlineReport->sold;
-                $cleanSheet->opening_inventory_units = $greenlineReport->opening;
-                $cleanSheet->closing_inventory_units = $greenlineReport->closing;
-                $cleanSheet->purchased = $greenlineReport->purchased;
-                $cleanSheet->average_price = $greenlineReport->average_price;
-                $cleanSheet->average_cost = trim($greenlineReport->average_cost);
-                $cleanSheet->retailerReportSubmission_id = $retailerReportSubmission->id;
-                $cleanSheet->flag = '1';
-                $cleanSheet->comments = 'Record Not found in the Master Catalog';
-
-                $data[] = $cleanSheet->attributesToArray();
+                $cleanRecords[] = $this->checkMasterCatalogForGreenline(
+                    retailer: $retailer,
+                    submission: $retailerReportSubmission,
+                    cleanSheet: new CleanSheet(),
+                    lpVariable: $lpVariable,
+                    greenlineReport: $report
+                );
+                continue;
             }
+
+            // Record not found in master catalog → create flagged record
+            $cleanSheet = new CleanSheet();
+
+            $cleanSheet->sku                        = $report->sku;
+            $cleanSheet->product_name               = $report->name;
+            $cleanSheet->category                   = $report->compliance_category;
+            $cleanSheet->brand                      = $report->brand;
+            $cleanSheet->barcode                    = $report->barcode;
+            $cleanSheet->sold                       = $report->sold;
+            $cleanSheet->opening_inventory_units    = $report->opening;
+            $cleanSheet->closing_inventory_units    = $report->closing;
+            $cleanSheet->purchased                  = $report->purchased;
+            $cleanSheet->average_price              = $report->average_price;
+            $cleanSheet->average_cost               = trim($report->average_cost ?? '');
+            $cleanSheet->retailerReportSubmission_id = $retailerReportSubmission->id;
+            $cleanSheet->flag                       = '1';
+            $cleanSheet->comments                   = 'Record not found in Master Catalog';
+
+            $cleanRecords[] = $cleanSheet->attributesToArray();
         }
-        $this->bulkInsert($data);
-        return;
+
+        $this->bulkInsert($cleanRecords);
     }
 
     private function ideal_clean_report($retailerReportSubmission, $retailer_id)
