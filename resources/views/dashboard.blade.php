@@ -148,39 +148,60 @@
                                             <th>Submission Date</th>
                                         </tr>
                                     </thead>
-
                                     <tbody>
-                                        @foreach ($retailers as $retailer)
-                                            @foreach ($retailer->ReportStatus as $reportStatus)
-                                                <tr>
-                                                    <td>
-                                                        <div class="user-img">
-                                                            <img src="{{ asset('admin/images/user-02.png') }}"
-                                                                alt="">
-                                                        </div>
-                                                        <div class="user-title">{{ $retailer->user->name }}</div>
-                                                    </td>
-                                                    <td> {{ $reportStatus->province }} </td>
-                                                    <td> {{ $reportStatus->location }} </td>
+                                        @forelse ($retailers as $retailer)
+                                            @php
+                                                // Get the most recent report status (assuming 'date' is a date/datetime column)
+                                                $latestStatus = $retailer->ReportStatus->sortByDesc('date')->first();
+                                            @endphp
 
-                                                    <td>
-                                                        <div class="flex-align gap-2">
-                                                            {{ $reportStatus->status }}
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <div class="flex-align gap-2">
-                                                            {{ $retailer->ReportStatus->first()->date }}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            @endforeach
-                                        @endforeach
+                                            <tr>
+                                                <td>
+                                                    <div class="user-img">
+                                                        <img src="{{ $retailer->user?->avatar ?? asset('admin/images/user-02.png') }}"
+                                                            alt="{{ $retailer->user?->name ?? 'Retailer' }}"
+                                                            class="rounded-circle">
+                                                    </div>
+                                                    <div class="user-title">
+                                                        {{ $retailer->user?->name ?? 'Unknown User' }}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    {{ $latestStatus?->province ?? '—' }}
+                                                </td>
+                                                <td>
+                                                    {{ $latestStatus?->location ?? '—' }}
+                                                </td>
+                                                <td>
+                                                    <div class="flex-align gap-2">
+                                                        @if ($latestStatus)
+                                                            <span
+                                                                class="status {{ strtolower($latestStatus->status) ?? 'pending' }}"></span>
+                                                            {{ ucfirst($latestStatus->status ?? 'Pending') }}
+                                                        @else
+                                                            <span class="status pending"></span>
+                                                            Pending
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    {{ $latestStatus?->date?->format('d M Y') ?? '—' }}
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4 text-muted">
+                                                    No retailers found
+                                                </td>
+                                            </tr>
+                                        @endforelse
                                     </tbody>
                                 </table>
                             </div>
-                            <a class="btn btn-primary" href="{{ route('retailers.index') }}">Show
-                                All</a>
+
+                            <a class="btn btn-primary mt-3" href="{{ route('retailers.index') }}">
+                                Show All Retailers
+                            </a>
                         </div>
                     </div>
                     <div class="col-md-6">
